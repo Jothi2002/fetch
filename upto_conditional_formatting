@@ -1,0 +1,223 @@
+package sheetfunctionality;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+public class zohosheet {
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/my_project";
+    private static final String DB_USER = "root";
+    private static final String DB_PASSWORD = "Jothi@2002";
+    private static final String OAUTH_TOKEN = "1000.27dce92160fc0dd5fda7aa072819e307.511d6001f11a7832c4aa5707afb20ed9";
+    private static final String RESOURCE_ID = "zvs6c67a5e78524114299bee269def80dd5f5";
+    private static final String SHEET_URL = "https://sheet.zoho.in/api/v2/" + RESOURCE_ID;
+
+    public static void main(String[] args) {
+        try {
+            JSONArray jsonArray = fetchDataAndCalculatePercentage();
+            postDataToSheet(jsonArray);
+            Thread.sleep(10000); 
+
+        
+            JSONArray updatedData = fetchUpdatedData();
+
+            applyConditionalFormatting(updatedData);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static JSONArray fetchDataAndCalculatePercentage() throws SQLException {
+        JSONArray jsonArray = new JSONArray();
+
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+             Statement stmt = conn.createStatement()) {
+
+            String query = "SELECT EmployeeID, EmployeeName, EmployeeEmailID, WorkingDays, LeaveDays FROM Employee";
+            ResultSet rs = stmt.executeQuery(query);
+
+            while (rs.next()) {
+                int employeeId = rs.getInt("EmployeeID");
+                String employeeName = rs.getString("EmployeeName");
+                String employeeEmailID = rs.getString("EmployeeEmailID");
+                int workingDays = rs.getInt("WorkingDays");
+                int leaveDays = rs.getInt("LeaveDays");
+
+    
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("EmployeeID", employeeId);
+                jsonObject.put("EmployeeName", employeeName);
+                jsonObject.put("EmployeeEmailID", employeeEmailID);
+                jsonObject.put("WorkingDays", workingDays);
+                jsonObject.put("LeaveDays", leaveDays);
+
+                jsonArray.put(jsonObject);
+
+                System.out.println("JSON Object: " + jsonObject.toString());
+            }
+        }
+
+        return jsonArray;
+    }
+
+    private static void postDataToSheet(JSONArray jsonArray) throws Exception {
+        HttpClient client = HttpClient.newHttpClient();
+
+        String postData = buildPostData(jsonArray);
+        HttpRequest addRecordsRequest = HttpRequest.newBuilder()
+                .uri(new URI(SHEET_URL))
+                .header("Authorization", "Zoho-oauthtoken " + OAUTH_TOKEN)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .POST(HttpRequest.BodyPublishers.ofString(postData))
+                .build();
+
+        HttpResponse<String> addRecordsResponse = client.send(addRecordsRequest, HttpResponse.BodyHandlers.ofString());
+        System.out.println("Add Records Response Code :: " + addRecordsResponse.statusCode());
+        System.out.println("Add Records Response Body: " + addRecordsResponse.body());
+
+        if (addRecordsResponse.statusCode() != 200) {
+            throw new Exception("Adding records failed.");
+        }
+
+       
+        String postFormulaData = buildPostFormulaData();
+        HttpRequest applyFormulaRequest = HttpRequest.newBuilder()
+                .uri(new URI(SHEET_URL))
+                .header("Authorization", "Zoho-oauthtoken " + OAUTH_TOKEN)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .POST(HttpRequest.BodyPublishers.ofString(postFormulaData))
+                .build();
+
+        HttpResponse<String> applyFormulaResponse = client.send(applyFormulaRequest, HttpResponse.BodyHandlers.ofString());
+        System.out.println("Apply Formula Response Code :: " + applyFormulaResponse.statusCode());
+        System.out.println("Apply Formula Response Body: " + applyFormulaResponse.body());
+
+        if (applyFormulaResponse.statusCode() != 200) {
+            throw new Exception("Applying formula failed.");
+        }
+    }
+
+    private static JSONArray fetchUpdatedData() throws Exception {
+        HttpClient client = HttpClient.newHttpClient();
+        String requestBody = "method=worksheet.records.fetch&worksheet_name=Sheet1";
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(new URI(SHEET_URL))
+                .header("Authorization", "Zoho-oauthtoken " + OAUTH_TOKEN)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        System.out.println("Fetch Data Response Code :: " + response.statusCode());
+        System.out.println("Fetch Data Response Body: " + response.body());
+
+        if (response.statusCode() == 200) {
+         
+            JSONObject jsonResponse = new JSONObject(response.body());
+            return jsonResponse.getJSONArray("records"); 
+        } else {
+            throw new Exception("Failed to fetch updated data: " + response.body());
+        }
+    }
+
+    private static void applyConditionalFormatting(JSONArray records) throws Exception {
+        HttpClient client = HttpClient.newHttpClient();
+
+        JSONArray formatJsonArray = new JSONArray();
+
+        // Apply conditional formatting based on percentage
+        for (int i = 0; i < records.length(); i++) {
+            JSONObject record = records.getJSONObject(i);
+            int percentage = record.getInt("Percentage"); // Adjust based on the actual field name
+
+            // Conditional formatting for cells where percentage < 90
+            if (percentage < 90) {
+                JSONObject formatRule = new JSONObject();
+                formatRule.put("worksheet_id", "0#"); 
+                formatRule.put("range", "A" + (i + 2) + ":F" + (i + 2)); 
+                formatRule.put("fill_color", "#FF0000"); 
+                formatRule.put("font_color", "#FFFFFF"); 
+                formatRule.put("bold", true); 
+
+               
+              
+                formatJsonArray.put(formatRule);
+            }
+        }
+
+        
+        JSONObject generalFormatting = new JSONObject();
+        generalFormatting.put("worksheet_id", "0#"); 
+        generalFormatting.put("range", "A1:F100"); 
+        generalFormatting.put("horizontal_alignment", "center"); 
+        generalFormatting.put("font_name", "Times New Roman"); 
+        generalFormatting.put("font_size", 10); 
+; 
+
+        formatJsonArray.put(generalFormatting);
+
+        
+        StringBuilder formatData = new StringBuilder();
+        formatData.append("method=").append("ranges.format.set").append("&");
+        formatData.append("format_json=").append(URLEncoder.encode(formatJsonArray.toString(), StandardCharsets.UTF_8));
+
+        System.out.println("Format Data: " + formatData.toString());
+
+
+        HttpRequest formatRequest = HttpRequest.newBuilder()
+                .uri(new URI(SHEET_URL))
+                .header("Authorization", "Zoho-oauthtoken " + OAUTH_TOKEN)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .POST(HttpRequest.BodyPublishers.ofString(formatData.toString()))
+                .build();
+
+        HttpResponse<String> formatResponse = client.send(formatRequest, HttpResponse.BodyHandlers.ofString());
+
+        System.out.println("Format Response Code :: " + formatResponse.statusCode());
+        System.out.println("Format Response Body: " + formatResponse.body());
+
+        if (formatResponse.statusCode() == 200) {
+            System.out.println("Successfully applied conditional formatting.");
+        } else {
+            System.out.println("Applying conditional formatting failed.");
+        }
+    }
+
+
+    private static String buildPostData(JSONArray jsonArray) {
+        StringBuilder postData = new StringBuilder();
+        postData.append("method=").append("worksheet.records.add").append("&");
+        postData.append("worksheet_name=").append("Sheet1").append("&");
+        postData.append("header_row=").append("1").append("&");
+        postData.append("json_data=").append(URLEncoder.encode(jsonArray.toString(), StandardCharsets.UTF_8));
+
+        System.out.println("Post Data: " + postData.toString());
+        return postData.toString();
+    }
+
+    private static String buildPostFormulaData() {
+        StringBuilder post = new StringBuilder();
+        post.append("method=").append("row.content.set").append("&");
+        post.append("worksheet_name=").append("Sheet1").append("&");
+        post.append("row=").append(URLEncoder.encode("2", StandardCharsets.UTF_8)).append("&");
+        post.append("column_array=").append(URLEncoder.encode("[6]", StandardCharsets.UTF_8)).append("&"); 
+        
+        post.append("data_array=").append(URLEncoder.encode("[\"=IF(D2=0, 0, (((D2:D4-E2:E4)/D2:D4)*100))\"]", StandardCharsets.UTF_8));
+
+        System.out.println("Post Data for Percentage Calculation: " + post.toString());
+        return post.toString();
+    }
+}
