@@ -1,0 +1,17 @@
+use my_project;
+CREATE TABLE Employee (
+    EmployeeID INT PRIMARY KEY AUTO_INCREMENT,
+    EmployeeName VARCHAR(100) NOT NULL,
+    EmployeeEmailID VARCHAR(255) UNIQUE NOT NULL,
+    WorkingDays INT NOT NULL,
+    LeaveDays INT NOT NULL,
+    Percentage DECIMAL(5, 2) NOT NULL
+);
+ALTER TABLE Employee
+MODIFY COLUMN Percentage DECIMAL(5, 2) NULL;
+INSERT INTO Employee (EmployeeName, EmployeeEmailID, WorkingDays, LeaveDays)
+VALUES 
+    ('Alice Johnson', 'alice.johnson@example.com', 18, 1),
+    ('Bob Brown', 'bob.brown@example.com', 21, 4),
+    ('Charlie Davis', 'charlie.davis@example.com', 25, 0);
+
