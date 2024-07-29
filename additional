@@ -36,8 +36,8 @@ public class zohosheet {
             String[] columnNames = {"CheckIn", "CheckOut"};
 
             insertColumns(worksheetName, insertColumnAfter, columnNames);
-            JSONArray updateData = prepareUpdateData(updatedData);
-            updateSpecificColumns(updateData);
+//            JSONArray updateData = prepareUpdateData(updatedData);
+//            updateSpecificColumns(updateData);
             applyConditionalFormatting(updatedData);
             setColumnWidths();
             
@@ -78,29 +78,29 @@ public class zohosheet {
 
         return jsonArray;
     }
-    private static JSONArray prepareUpdateData(JSONArray updatedData) {
-        JSONArray updateArray = new JSONArray();
-        
-        for (int i = 0; i < updatedData.length(); i++) {
-            JSONObject record = updatedData.getJSONObject(i);
-            
-            JSONObject updateRecord = new JSONObject();
-//            updateRecord.put("row_id", record.getString("EmployeeID")); // Assume row_id is available in record
-            
-            JSONObject columns = new JSONObject();
-            columns.put("CheckIn", "9:00 am"); // Example value
-            columns.put("CheckOut", "4:00 pm"); 
-            columns.put("CheckIn", "9:10 am"); // Example value
-            columns.put("CheckOut", "4:05 pm"); 
-            columns.put("CheckIn", "9:03 am"); // Example value
-            columns.put("CheckOut", "4:20 pm"); // Example value
-            
-            updateRecord.put("columns", columns);
-            updateArray.put(updateRecord);
-        }
-        
-        return updateArray;
-    }
+//    private static JSONArray prepareUpdateData(JSONArray updatedData) {
+//        JSONArray updateArray = new JSONArray();
+//        
+//        for (int i = 0; i < updatedData.length(); i++) {
+//            JSONObject record = updatedData.getJSONObject(i);
+//            
+//            JSONObject updateRecord = new JSONObject();
+////            updateRecord.put("row_id", record.getString("EmployeeID")); // Assume row_id is available in record
+//            
+//            JSONObject columns = new JSONObject();
+//            columns.put("CheckIn", "9:00 am"); // Example value
+//            columns.put("CheckOut", "4:00 pm"); 
+//            columns.put("CheckIn", "9:10 am"); // Example value
+//            columns.put("CheckOut", "4:05 pm"); 
+//            columns.put("CheckIn", "9:03 am"); // Example value
+//            columns.put("CheckOut", "4:20 pm"); // Example value
+//            
+//            updateRecord.put("columns", columns);
+//            updateArray.put(updateRecord);
+//        }
+//        
+//        return updateArray;
+//    }
 
 
     private static void postDataToSheet(JSONArray jsonArray) throws Exception {
@@ -300,37 +300,37 @@ public class zohosheet {
             System.out.println("Setting column widths with auto-fit failed.");
         }
     }
-    private static void updateSpecificColumns(JSONArray jsonArray) throws Exception {
-        HttpClient client = HttpClient.newHttpClient();
+//    private static void updateSpecificColumns(JSONArray jsonArray) throws Exception {
+//        HttpClient client = HttpClient.newHttpClient();
+//
+//        // Construct the data to update specific columns
+//        String postData = buildUpdatePostData(jsonArray);
+//        HttpRequest updateRequest = HttpRequest.newBuilder()
+//                .uri(new URI(SHEET_URL))
+//                .header("Authorization", "Zoho-oauthtoken " + OAUTH_TOKEN)
+//                .header("Content-Type", "application/x-www-form-urlencoded")
+//                .POST(HttpRequest.BodyPublishers.ofString(postData))
+//                .build();
+//
+//        HttpResponse<String> updateResponse = client.send(updateRequest, HttpResponse.BodyHandlers.ofString());
+//        System.out.println("Update Response Code :: " + updateResponse.statusCode());
+//        System.out.println("Update Response Body: " + updateResponse.body());
+//
+//        if (updateResponse.statusCode() != 200) {
+//            throw new Exception("Updating records failed.");
+//        }
+//    }
 
-        // Construct the data to update specific columns
-        String postData = buildUpdatePostData(jsonArray);
-        HttpRequest updateRequest = HttpRequest.newBuilder()
-                .uri(new URI(SHEET_URL))
-                .header("Authorization", "Zoho-oauthtoken " + OAUTH_TOKEN)
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .POST(HttpRequest.BodyPublishers.ofString(postData))
-                .build();
-
-        HttpResponse<String> updateResponse = client.send(updateRequest, HttpResponse.BodyHandlers.ofString());
-        System.out.println("Update Response Code :: " + updateResponse.statusCode());
-        System.out.println("Update Response Body: " + updateResponse.body());
-
-        if (updateResponse.statusCode() != 200) {
-            throw new Exception("Updating records failed.");
-        }
-    }
-
-    private static String buildUpdatePostData(JSONArray jsonArray) {
-        StringBuilder postData = new StringBuilder();
-        postData.append("method=").append("worksheet.records.add").append("&");
-        postData.append("worksheet_name=").append("Sheet1").append("&");
-        postData.append("header_row=").append("1").append("&");
-        postData.append("json_data=").append(URLEncoder.encode(jsonArray.toString(), StandardCharsets.UTF_8));
-
-        System.out.println("Update Post Data: " + postData.toString());
-        return postData.toString();
-    }
+//    private static String buildUpdatePostData(JSONArray jsonArray) {
+//        StringBuilder postData = new StringBuilder();
+//        postData.append("method=").append("worksheet.records.add").append("&");
+//        postData.append("worksheet_name=").append("Sheet1").append("&");
+//        postData.append("header_row=").append("1").append("&");
+//        postData.append("json_data=").append(URLEncoder.encode(jsonArray.toString(), StandardCharsets.UTF_8));
+//
+//        System.out.println("Update Post Data: " + postData.toString());
+//        return postData.toString();
+//    }
 
 
     private static String buildPostData(JSONArray jsonArray) {
