@@ -19,20 +19,21 @@ public class email {
     private static final String DB_USER = "root";
     private static final String DB_PASSWORD = "Jothi@2002";
     private static final String OAUTH_TOKEN = "1000.582d60821af7ff89cebe3d007d864d0c.8b427a072a5083a2cd9ac03e4f0e7504";
-    private static final String RESOURCE_ID = "5725m10204e66416c40318aa57ccc596f953e";
+    private static final String RESOURCE_ID = "5725m17b4889a28f14237840d254fc8645203";
     private static final String SHEET_URL = "https://sheet.zoho.in/api/v2/" + RESOURCE_ID;
 
     public static void main(String[] args) {
         try {
         	 int rowIndex=5;
-//             String worksheetName="Sheet1";
+             String worksheetName="Sheet1";
             JSONArray jsonArray = fetchDataAndCalculatePercentage();
             postDataToSheet(jsonArray);
             Thread.sleep(10000);
-
+            JSONArray rowIndexArray = createRowIndexArray();
+            setRowHeightAutoFit(worksheetName, rowIndexArray);
             JSONArray updatedData = fetchUpdatedData();
             Thread.sleep(100);
-            String worksheetName = "Sheet1";
+//            String worksheetName = "Sheet1";
             String insertColumnAfter = "LeaveDays"; // Column after which new columns will be inserted
             String[] columnNames = {"LeaveType"};
       
@@ -227,10 +228,50 @@ public class email {
             throw new Exception("Failed to fetch updated data: " + response.body());
         }
     }
+    private static JSONArray createRowIndexArray() {
+        JSONArray rowIndexArray = new JSONArray();
+
+        JSONObject range1 = new JSONObject();
+        range1.put("start_row", 4);
+        range1.put("end_row", 8);
+        rowIndexArray.put(range1);
+
+        JSONObject range2 = new JSONObject();
+        range2.put("start_row", 12);
+        range2.put("end_row", 12);
+        rowIndexArray.put(range2);
+
+        return rowIndexArray;
+    }
+    private static void setRowHeightAutoFit(String worksheetName, JSONArray rowIndexArray) throws Exception {
+        HttpClient client = HttpClient.newHttpClient();
+
+ 
+        String requestData = buildRowHeight(worksheetName, rowIndexArray);
+
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(new URI(SHEET_URL))
+                .header("Authorization", "Zoho-oauthtoken " + OAUTH_TOKEN)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .POST(HttpRequest.BodyPublishers.ofString(requestData))
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        System.out.println("Response Code :: " + response.statusCode());
+        System.out.println("Response Body: " + response.body());
+
+        if (response.statusCode() == 200) {
+            System.out.println("Successfully set row height to auto-fit.");
+        } else {
+            System.out.println("Setting row height to auto-fit failed.");
+        }
+    }
     private static void insertColumns(String worksheetName, String insertColumnAfter, String[] columnNames) throws Exception {
         HttpClient client = HttpClient.newHttpClient();
 
-        // Construct the JSON object for column insertion
+        
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("method", "records.columns.insert");
         jsonObject.put("worksheet_name", worksheetName);
@@ -429,6 +470,16 @@ public class email {
         postData.append("worksheet_name=").append(URLEncoder.encode(worksheetName, StandardCharsets.UTF_8)).append("&");
         postData.append("row=").append(URLEncoder.encode(String.valueOf(rowIndex), StandardCharsets.UTF_8)).append("&");
         postData.append("json_data=").append(URLEncoder.encode(jsonData.toString(), StandardCharsets.UTF_8));
+
+        System.out.println("Request Data: " + postData.toString());
+        return postData.toString();
+    }
+    private static String buildRowHeight(String worksheetName, JSONArray rowIndexArray) throws Exception {
+        StringBuilder postData = new StringBuilder();
+        postData.append("method=").append(URLEncoder.encode("worksheet.rows.height", StandardCharsets.UTF_8)).append("&");
+        postData.append("worksheet_name=").append(URLEncoder.encode(worksheetName, StandardCharsets.UTF_8)).append("&");
+        postData.append("row_index_array=").append(URLEncoder.encode(rowIndexArray.toString(), StandardCharsets.UTF_8)).append("&");
+        postData.append("auto_fit=true");
 
         System.out.println("Request Data: " + postData.toString());
         return postData.toString();
